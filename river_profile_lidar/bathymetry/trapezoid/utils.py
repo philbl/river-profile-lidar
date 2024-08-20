@@ -261,7 +261,7 @@ def fix_nan_pixels_with_gaussian_convolution(
     nan_pixel_sum = numpy.isnan(merged_array_no_nan[water_mask]).sum()
     # Apply Gaussian convolution until all NaN values within the water mask are filled
     with tqdm(
-        total=nan_pixel_sum, desc="Remaining NaN Pixels with Gaussian Convolution"
+        total=nan_pixel_sum, desc="Fix Remaining NaN Pixels with Gaussian Convolution"
     ) as pbar:
         while nan_pixel_sum > 0:
             with warnings.catch_warnings():

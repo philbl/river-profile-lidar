@@ -7,6 +7,7 @@ from shapely.ops import unary_union
 import rasterio
 from rasterio.windows import Window
 from rasterio.io import MemoryFile, DatasetReader
+from skimage.util import img_as_float64
 from typing import Tuple, Dict
 
 
@@ -153,9 +154,54 @@ def get_water_rgb_array_from_transect_df(
 
     water_rgb, affine_transform = rasterio_mask(rgb, [all_transect_polygon], crop=True)
     water_rgb_array = water_rgb[:3].transpose(1, 2, 0)
+    water_rgb_array = img_as_float64(water_rgb_array)
     return (
         water_rgb_array,
         affine_transform,
         transect_polygon_in_rgb,
         transect_polygon_df,
     )
+
+
+def get_touching_previous_transect_id_list(
+    current_row, transect_polygon_df, pk_buffer_for_touching_polygon=50
+):
+    """
+    From a row with a 'PK' and a 'geometry', return the ID list of previous (according to 'PK' value) touching transects
+    """
+    current_pk = current_row["PK"]
+    current_geometry = current_row["geometry"]
+    potential_previous_transect = transect_polygon_df[
+        transect_polygon_df["PK"].between(
+            current_pk - pk_buffer_for_touching_polygon, current_pk
+        )
+    ]
+    touching_previous_row = potential_previous_transect.apply(
+        lambda row: row["geometry"].touches(current_geometry)
+        and row["PK"] < current_pk,
+        axis=1,
+    )
+    id_list = list(potential_previous_transect[touching_previous_row]["ID"].values)
+    return id_list
+
+
+def get_touching_following_transect_id_list(
+    current_row, transect_polygon_df, pk_buffer_for_touching_polygon=50
+):
+    """
+    From a row with a 'PK' and a 'geometry', return the ID list of following (according to 'PK' value) touching transects
+    """
+    current_pk = current_row["PK"]
+    current_geometry = current_row["geometry"]
+    potential_following_transect = transect_polygon_df[
+        transect_polygon_df["PK"].between(
+            current_pk, current_pk + pk_buffer_for_touching_polygon
+        )
+    ]
+    touching_previous_row = potential_following_transect.apply(
+        lambda row: row["geometry"].touches(current_geometry)
+        and row["PK"] > current_pk,
+        axis=1,
+    )
+    id_list = list(potential_following_transect[touching_previous_row]["ID"].values)
+    return id_list
