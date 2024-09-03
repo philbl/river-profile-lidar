@@ -5,8 +5,8 @@ from river_profile_lidar.bathymetry.trapezoid.cross_section_points.create_cross_
 )
 
 
-TRANSECT_DATA_PATH = "../transect_project/data/new_transect/Transects_Level_2_ESC/Transects_Level_2_ESC_q_split.shp"
-SAVING_FOLDER_PATH = "../data/cross_section/"
+TRANSECT_DATA_PATH = "../data/transects/Transects_Level_2_MAN/Transects_Level_2_MAN.shp"
+SAVING_FOLDER_PATH = "../data/cross_section/MAN"
 
 
 if __name__ == "__main__":

@@ -151,7 +151,8 @@ def get_water_rgb_array_from_transect_df(
     ].reset_index(drop=True)
     polygon_list = transect_polygon_in_rgb["geometry"].to_list()
     all_transect_polygon = unary_union(polygon_list)
-
+    if len(polygon_list) == 0:
+        return None, None, None, None
     water_rgb, affine_transform = rasterio_mask(rgb, [all_transect_polygon], crop=True)
     water_rgb_array = water_rgb[:3].transpose(1, 2, 0)
     water_rgb_array = img_as_float64(water_rgb_array)
