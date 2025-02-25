@@ -169,7 +169,9 @@ def get_middle_point_from_two_points(point1, point2):
     return [Point(x, y, z)]
 
 
-def create_all_points_from_shore_points_list(shore_points_list, qi, si, wi):
+def create_all_points_from_shore_points_list(
+    shore_points_list, qi, si, wi, include_middle_point
+):
     points_list = []
     shore_points_z = add_z_to_points_list_from_z_list(shore_points_list, [0] * 2)
     points_list.extend(shore_points_z)
@@ -206,5 +208,6 @@ def create_all_points_from_shore_points_list(shore_points_list, qi, si, wi):
     bottom_points_interpolation_list = get_middle_point_from_two_points(
         bottom_points_z[0], bottom_points_z[1]
     )
-    points_list.extend(bottom_points_interpolation_list)
+    if include_middle_point:
+        points_list.extend(bottom_points_interpolation_list)
     return points_list

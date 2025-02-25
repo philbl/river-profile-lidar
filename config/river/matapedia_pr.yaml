@@ -1,0 +1,14 @@
+name: matepedia_pr
+general_river_name: MAP
+
+rgb_image_folder_path: "D:/SERIF/MAP/photos_crop_Pr/"
+transect_path: "D:/SERIF/MAP/Transect_mathias_nov_2024/Transects_Level_2_MAP.shp"
+shade_mask_path: "D:/SERIF/MAP/mask_hab_mathias_nov_2024/Mask_ombres_reflets_MAP.shp"
+index_file_path: "D:/SERIF/MAP/PHOTOS/Index_mathias_2024/Index_ortho_utilisees_Pr_MAP.shp"
+
+cross_section_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/cross_section_points/"
+trapezoid_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/trapezoid/"
+hab_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/hab/"
+water_speed_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/vitesse/"
+d84_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/d84/"
+iqh_output_path: "D:/SERIF/MAP/HAB_2024/MAP_Pr/iqh/"

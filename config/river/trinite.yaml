@@ -1,0 +1,14 @@
+name: trinite
+general_river_name: TRI
+
+rgb_image_folder_path: "D:/SERIF/TRI/photos_crop/"
+transect_path: "D:/SERIF/TRI/Transect_mathias_nov_2024/Transects_Level_2_TRI.shp"
+shade_mask_path: "D:/SERIF/TRI/mask_hab_mathias_nov_2024/Mask_ombres_reflets_TRI.shp"
+index_file_path: "D:/SERIF/TRI/PHOTOS/Index_mathias_2024/Indexho_utilisees_TRI.shp"
+
+cross_section_output_path: "D:/SERIF/TRI/HAB_2024/cross_section_points/"
+trapezoid_output_path: "D:/SERIF/TRI/HAB_2024/trapezoid/"
+hab_output_path: "D:/SERIF/TRI/HAB_2024/hab"
+water_speed_output_path: "D:/SERIF/TRI/HAB_2024/vitesse/"
+d84_output_path: "D:/SERIF/TRI/HAB_2024/d84/"
+iqh_output_path: "D:/SERIF/TRI/HAB_2024/iqh/"

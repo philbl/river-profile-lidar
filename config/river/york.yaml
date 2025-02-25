@@ -1,0 +1,14 @@
+name: york
+general_river_name: YRK
+
+rgb_image_folder_path: "D:/SERIF/YRK/photos_crop/"
+transect_path: "D:/SERIF/YRK/Transect_mathias_nov_2024/Transects_Level_2_YRK.shp"
+shade_mask_path: "D:/SERIF/YRK/mask_hab_mathias_nov_2024/MASK_HAB_YRK.shp"
+index_file_path: "D:/SERIF/YRK/PHOTOS/Index/Index_Ortho_utilisees_YRK_hiearachie_merge.shp"
+
+cross_section_output_path: "D:/SERIF/YRK/HAB_2024/cross_section_points/"
+trapezoid_output_path: "D:/SERIF/YRK/HAB_2024/trapezoid/"
+hab_output_path: "D:/SERIF/YRK/HAB_2024/hab"
+water_speed_output_path: "D:/SERIF/YRK/HAB_2024/vitesse/"
+d84_output_path: "D:/SERIF/YRK/HAB_2024/d84/"
+iqh_output_path: "D:/SERIF/YRK/HAB_2024/iqh/"

@@ -22,6 +22,7 @@ from river_profile_lidar.bathymetry.hab.utils import (
     save_array_as_raster,
     interpolate_bathymetry_in_shaded_areas,
     get_points_in_shade,
+    replace_bathymetry_in_too_much_shade,
 )
 from river_profile_lidar.bathymetry.trapezoid.utils import (
     fix_nan_pixels_with_gaussian_convolution,
@@ -71,6 +72,7 @@ def process_and_save_hab(
         assert "shade_mask_path" in shade_kwargs.keys()
         assert "trapezoid_path" in shade_kwargs.keys()
         assert "cross_section_points_path" in shade_kwargs.keys()
+        assert "min_proportion_of_not_in_shade_pixels" in shade_kwargs.keys()
     else:
         handle_shade = False
 
@@ -90,7 +92,7 @@ def process_and_save_hab(
         tree_shade_df = geopandas.read_file(shade_kwargs["shade_mask_path"])
         trapezoid = rasterio.open(shade_kwargs["trapezoid_path"])
         shade_mask = geometry_mask(
-            [tree_shade_df.loc[0].geometry],
+            tree_shade_df.geometry.values,
             out_shape=(height, width),
             transform=affine_transform,
             invert=True,
@@ -119,9 +121,9 @@ def process_and_save_hab(
         ) = detect_and_interpolate_bad_water_pixels(
             water_rgb_array,
             water_mask,
-            sobel_threshold=0.04,
+            sobel_threshold=0.03,
             sobel_gaussian_std=1,
-            sobel_gaussian_threshold=0.3,
+            sobel_gaussian_threshold=0.25,
         )
 
         water_rgb_array_bad_pixel = water_rgb_array.copy().astype(float)
@@ -153,7 +155,6 @@ def process_and_save_hab(
     transect_polygon_in_rgb = add_pixel_distribution_to_transect_polygon_df(
         transect_polygon_in_rgb,
         water_rgb_array,
-        (height, width),
         affine_transform,
         trapezoid_in_shade_array,
     )
@@ -204,18 +205,23 @@ def process_and_save_hab(
     depth_estimate[~water_mask] = None
     depth_estimate[depth_estimate < 0] = 0
 
-    depth_estimate = smooth_transect_edges(
+    # Step 8: Shade Handling
+    # Start by remplacing the transect that do not fit the min_proportion_of_not_in_shade_pixels
+    # by the trapezoid depth
+    all_transect_in_too_much_shade_mask = replace_bathymetry_in_too_much_shade(
         transect_polygon_in_rgb,
-        depth_estimate,
-        raster_resolution,
         height,
         width,
         affine_transform,
-        profile["crs"],
+        shade_kwargs["min_proportion_of_not_in_shade_pixels"],
     )
+    depth_estimate[all_transect_in_too_much_shade_mask] = trapezoid_array[
+        all_transect_in_too_much_shade_mask
+    ]
+    remaining_shade_mask = shade_mask * ~all_transect_in_too_much_shade_mask
 
     # Interpolated values in shade
-    if handle_shade:
+    if handle_shade and remaining_shade_mask.sum() > 0:
         points_in_image_and_shade_df = get_points_in_shade(
             tree_shade_df,
             shade_kwargs["cross_section_points_path"],
@@ -227,34 +233,48 @@ def process_and_save_hab(
         ) = interpolate_bathymetry_in_shaded_areas(
             transect_polygon_in_rgb,
             depth_estimate,
-            shade_mask,
+            remaining_shade_mask,
             height,
             width,
             affine_transform,
             points_in_image_and_shade_df,
             raster_resolution,
+            trapezoid_array,
+            shade_kwargs["min_proportion_of_not_in_shade_pixels"],
         )
+        if depth_estimate_shade is not None:
+            depth_estimate_shade = reproject_raster(
+                numpy.atleast_3d(depth_estimate_shade).transpose(2, 0, 1),
+                affine_transform_shade,
+                profile["crs"],
+                (1, height, width),
+                affine_transform,
+            )[0]
+            depth_estimate[remaining_shade_mask] = depth_estimate_shade[
+                remaining_shade_mask
+            ]
 
-        depth_estimate_shade = reproject_raster(
-            numpy.atleast_3d(depth_estimate_shade).transpose(2, 0, 1),
-            affine_transform_shade,
-            profile["crs"],
-            (1, height, width),
-            affine_transform,
-        )[0]
-        depth_estimate[shade_mask] = depth_estimate_shade[shade_mask]
+    water_mask_for_interpolation_projection = geometry_mask(
+        transect_polygon_in_rgb.geometry.values,
+        out_shape=(depth_estimate.shape[0], depth_estimate.shape[1]),
+        transform=affine_transform,
+        invert=True,
+    )
+    depth_estimate = fix_nan_pixels_with_gaussian_convolution(
+        depth_estimate, water_mask_for_interpolation_projection
+    )
 
-        water_mask_for_interpolation_projection = geometry_mask(
-            transect_polygon_in_rgb.geometry.values,
-            out_shape=(depth_estimate_shade.shape[0], depth_estimate_shade.shape[1]),
-            transform=affine_transform,
-            invert=True,
-        )
-        depth_estimate = fix_nan_pixels_with_gaussian_convolution(
-            depth_estimate, water_mask_for_interpolation_projection
-        )
+    depth_estimate = smooth_transect_edges(
+        transect_polygon_in_rgb,
+        depth_estimate,
+        raster_resolution,
+        height,
+        width,
+        affine_transform,
+        profile["crs"],
+    )
 
-    # Step 8: Save the final smoothed depth estimate raster
+    # Step 9: Save the final smoothed depth estimate raster
     depth_estimate = numpy.atleast_3d(depth_estimate).transpose(2, 0, 1)
     out_meta = get_basic_out_meta_data_tiff()
     save_array_as_raster(

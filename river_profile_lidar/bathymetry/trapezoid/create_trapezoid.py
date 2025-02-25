@@ -58,6 +58,13 @@ def process_and_save_trapezoid_bathymetry(
 
     # Step 2: Load transect polygons and points data
     transect_polygon_df = geopandas.read_file(transect_path)
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Backwater"] == 0]
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Lac"] == 0]
+    transect_polygon_df = transect_polygon_df[~transect_polygon_df["Slope"].isna()]
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Slope"] > 0]
+    transect_polygon_df = transect_polygon_df.sort_values(by="PK").reset_index(
+        drop=True
+    )
     points = geopandas.read_file(cross_sections_points_path)
 
     # Step 3: Extract transect polygon than are in the image
@@ -66,14 +73,6 @@ def process_and_save_trapezoid_bathymetry(
     )
     if transect_polygon_in_rgb is None:
         return None
-
-    # Filter out transects that are Backwater or Lac
-    transect_polygon_in_rgb = transect_polygon_in_rgb[
-        transect_polygon_in_rgb["Backwater"] == 0
-    ].reset_index(drop=True)
-    transect_polygon_in_rgb = transect_polygon_in_rgb[
-        transect_polygon_in_rgb["Lac"] == 0
-    ].reset_index(drop=True)
     if len(transect_polygon_in_rgb) == 0:
         return None
 

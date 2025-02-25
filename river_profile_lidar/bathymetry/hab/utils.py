@@ -8,11 +8,12 @@ from tqdm import tqdm
 import rasterio
 from rasterio.transform import from_origin
 from rasterio.features import rasterize, geometry_mask
+from rasterstats import zonal_stats
 from rasterio.warp import reproject, Resampling
 from shapely.geometry import Point
 from skimage.filters import sobel
 from scipy.ndimage import gaussian_filter
-from typing import Tuple
+from scipy import ndimage
 import warnings
 
 from river_profile_lidar.bathymetry.trapezoid.utils import (
@@ -21,10 +22,32 @@ from river_profile_lidar.bathymetry.trapezoid.utils import (
 )
 
 
+def mean_of_log_values(x):
+    """
+    Computes the mean of the logarithm of the input values, handling masked arrays.
+
+    This function applies a logarithm to the input array `x` and computes its mean.
+    If the result is a masked constant (i.e., all values are masked), it returns NaN.
+
+    Parameters:
+    -----------
+    x : numpy.array or numpy.ma.MaskedArray
+        Input array of values to compute the mean of their logarithms.
+
+    Returns:
+    --------
+    float
+        The mean of the log-transformed values, or NaN if all values are masked.
+    """
+    value = numpy.ma.mean(numpy.ma.log(x))
+    if isinstance(value, numpy.ma.core.MaskedConstant):
+        return numpy.nan
+    return value
+
+
 def add_pixel_distribution_to_transect_polygon_df(
     transect_polygon_df: pandas.DataFrame,
     water_rgb_array: numpy.ndarray,
-    image_height_width: Tuple[int, int],
     transform: Affine,
     trapezoid_in_shade_array=None,
 ) -> pandas.DataFrame:
@@ -51,40 +74,34 @@ def add_pixel_distribution_to_transect_polygon_df(
         The input DataFrame with an additional column, "masked_subset_transect_rgb", containing
         the pixel values from the water RGB array that fall within each transect polygon.
     """
-    height, width = image_height_width
     for i, row in tqdm(
         transect_polygon_df.iterrows(),
         total=len(transect_polygon_df),
         desc="Get Pixels by Transect",
     ):
         transect_polygon = row["geometry"]
-        mask_transect_rgb = geometry_mask(
-            [transect_polygon],
-            out_shape=(height, width),
-            transform=transform,
-            invert=True,
-        )
-        masked_subset_transect_rgb = water_rgb_array[mask_transect_rgb]
-        masked_subset_transect_rgb = masked_subset_transect_rgb[
-            (~numpy.isnan(masked_subset_transect_rgb)).all(axis=1)
+        transect_stats = zonal_stats(
+            transect_polygon,
+            water_rgb_array[:, :, 0],
+            affine=transform,
+            nodata=numpy.nan,
+            stats=["count", "max"],
+            add_stats={"mean_of_log": mean_of_log_values},
+        )[0]
+        shade_transect_stats = zonal_stats(
+            transect_polygon,
+            trapezoid_in_shade_array,
+            affine=transform,
+            nodata=numpy.nan,
+            stats=["count", "sum"],
+        )[0]
+        transect_polygon_df.loc[i, "nb_pixels_no_shade"] = transect_stats["count"]
+        transect_polygon_df.loc[i, "max_pixels_no_shade"] = transect_stats["max"]
+        transect_polygon_df.loc[i, "mean_of_log_no_shade"] = transect_stats[
+            "mean_of_log"
         ]
-        if trapezoid_in_shade_array is not None:
-            masked_subset_transect_trapezoid_in_shade = trapezoid_in_shade_array[
-                mask_transect_rgb
-            ]
-            masked_subset_transect_trapezoid_in_shade = (
-                masked_subset_transect_trapezoid_in_shade[
-                    ~numpy.isnan(masked_subset_transect_trapezoid_in_shade)
-                ]
-            )
-            transect_polygon_df.loc[
-                [i], "masked_subset_transect_trapezoid_in_shade"
-            ] = pandas.Series([masked_subset_transect_trapezoid_in_shade], index=[i])
-
-        transect_polygon_df.loc[[i], "masked_subset_transect_rgb"] = pandas.Series(
-            [masked_subset_transect_rgb], index=[i]
-        )
-
+        transect_polygon_df.loc[i, "nb_pixels_shade"] = shade_transect_stats["count"]
+        transect_polygon_df.loc[i, "sum_pixels_shade"] = shade_transect_stats["sum"]
     return transect_polygon_df
 
 
@@ -191,42 +208,6 @@ def calculate_estimated_q(width: float, mean_depth: float, slope: float) -> floa
     return estimated_q
 
 
-# def add_beta_and_max_pixel_value(
-#     transect_polygon_in_rgb: pandas.DataFrame,
-# ) -> pandas.DataFrame:
-#     """
-#     Calculate and add the beta coefficient and maximum pixel value to each row in a DataFrame of transect polygons.
-
-#     This function iterates over each row in the provided DataFrame, which contains transect polygons. For each
-#     transect, it calculates the maximum pixel value from the RGB values and the beta coefficient,
-#     which is derived from the mean logarithm of pixel values, the maximum pixel value, and the average depth (DA).
-#     The calculated values are then added as new columns ("max_pixel_value" and "beta") in the DataFrame.
-
-#     Parameters:
-#     -----------
-#     transect_polygon_in_rgb : pandas.DataFrame
-#         A DataFrame containing transect polygons with the following columns:
-#         - "DA": The average depth of the transect.
-#         - "masked_subset_transect_rgb": A 2D numpy array of RGB values for the transect.
-
-#     Returns:
-#     --------
-#     transect_polygon_in_rgb : pandas.DataFrame
-#         The input DataFrame with additional columns:
-#         - "max_pixel_value": The maximum pixel value in the interpolated RGB array.
-#         - "beta": The calculated beta coefficient based on the pixel values and depth.
-#     """
-#     for i, row in transect_polygon_in_rgb.iterrows():
-#         da = row["DA"]
-#         masked_subset_transect_rgb = row["masked_subset_transect_rgb"]
-#         max_value = masked_subset_transect_rgb[:, 0].max()
-#         mean_log_pixel_value = numpy.log(masked_subset_transect_rgb[:, 0]).mean()
-#         beta = calculate_beta(mean_log_pixel_value, max_value, da)
-#         transect_polygon_in_rgb.loc[i, "max_pixel_value"] = max_value
-#         transect_polygon_in_rgb.loc[i, "beta"] = beta
-#     return transect_polygon_in_rgb
-
-
 def calculate_remaining_da_for_no_shade(row):
     """
     Calculate the remaining average depth (DA) for pixels not in the shade within a transect.
@@ -249,15 +230,12 @@ def calculate_remaining_da_for_no_shade(row):
         The calculated remaining average depth for pixels not in the shade.
     """
     da = row["DA"]
-    if row["masked_subset_transect_trapezoid_in_shade"].shape[0] > 0:
-        number_of_pixel = (
-            row["masked_subset_transect_trapezoid_in_shade"].shape[0]
-            + row["masked_subset_transect_rgb"].shape[0]
-        )
+    if row["nb_pixels_shade"] > 0:
+        number_of_pixel = row["nb_pixels_shade"] + row["nb_pixels_no_shade"]
         depth_sum = da * number_of_pixel
-        remaining_da_for_no_shade = (
-            depth_sum - row["masked_subset_transect_trapezoid_in_shade"].sum()
-        ) / row["masked_subset_transect_rgb"].shape[0]
+        remaining_da_for_no_shade = (depth_sum - row["sum_pixels_shade"]) / row[
+            "nb_pixels_no_shade"
+        ]
     else:
         remaining_da_for_no_shade = da
 
@@ -304,7 +282,7 @@ def add_beta_and_max_pixel_value(transect_polygon_in_rgb, adjust_for_shade):
       polygon if `adjust_for_shade` is True.
     """
     for i, row in transect_polygon_in_rgb.iterrows():
-        if row["masked_subset_transect_rgb"].shape[0] == 0:
+        if row["nb_pixels_no_shade"] == 0:
             beta = numpy.nan
             max_value = numpy.nan
         else:
@@ -312,13 +290,8 @@ def add_beta_and_max_pixel_value(transect_polygon_in_rgb, adjust_for_shade):
                 da = calculate_remaining_da_for_no_shade(row)
             else:
                 da = row["DA"]
-            masked_subset_transect_rgb_interpolated_no_shade = row[
-                "masked_subset_transect_rgb"
-            ]
-            max_value = masked_subset_transect_rgb_interpolated_no_shade[:, 0].max()
-            mean_log_pixel_value = numpy.log(
-                masked_subset_transect_rgb_interpolated_no_shade[:, 0]
-            ).mean()
+            max_value = row["max_pixels_no_shade"]
+            mean_log_pixel_value = row["mean_of_log_no_shade"]
             beta = calculate_beta(mean_log_pixel_value, max_value, da)
         transect_polygon_in_rgb.loc[i, "max_pixel_value"] = max_value
         transect_polygon_in_rgb.loc[i, "beta"] = beta
@@ -605,7 +578,7 @@ def get_sobel_mask_and_masked_rgb_array(
         A 2D binary numpy array representing the Sobel mask, where True values indicate pixels with strong
         gradients (i.e., bad pixels).
     """
-    sobel_result = sobel(water_rgb_array).mean(axis=2)
+    sobel_result = sobel(water_rgb_array, axis=(0, 1)).max(axis=2)
     sobel_mask = sobel_result > sobel_threshold
     if gaussian_sigma > 0:
         sobel_mask = (
@@ -735,6 +708,16 @@ def detect_and_interpolate_bad_water_pixels(
 
     is_water_good_pixel_mask = water_mask & ~bad_pixel_mask
     is_water_bad_pixel_mask = water_mask & bad_pixel_mask
+
+    array_for_blob = water_mask.copy()
+    array_for_blob[is_water_bad_pixel_mask] = False
+    labeled_mask, num_features = ndimage.label(array_for_blob)
+    blob_label_count = pandas.Series(labeled_mask[labeled_mask != 0]).value_counts(
+        normalize=True
+    )
+    small_blob_label = blob_label_count[blob_label_count < 0.003].index
+    bad_blob = numpy.isin(labeled_mask, small_blob_label)
+    is_water_bad_pixel_mask = is_water_bad_pixel_mask | bad_blob
 
     water_rgb_array_good_pixel_filtered = water_rgb_array.copy().astype(float)
     water_rgb_array_good_pixel_filtered[~is_water_good_pixel_mask] = None
@@ -944,7 +927,6 @@ def interpolate_bathymetry_in_shaded_areas(
         no_shade_polygon_mask = (~shade_mask) * polygon_mask
         depth_estimate_hab_polygon = depth_estimate.copy()
         depth_estimate_hab_polygon[~no_shade_polygon_mask] = numpy.nan
-
         points = []
         row_indices, col_indices = numpy.where(~numpy.isnan(depth_estimate_hab_polygon))
         for row, col in zip(row_indices, col_indices):
@@ -979,7 +961,8 @@ def interpolate_bathymetry_in_shaded_areas(
 
         z_array_list.append(z_mesh)
         transform_list.append(transform)
-
+    if len(z_array_list) == 0:
+        return None, None
     merged_array, merged_transform = combine_list_of_array_and_transform_in_one_raster(
         z_array_list, transform_list
     )
@@ -1036,13 +1019,100 @@ def get_points_in_shade(tree_shade_df, points_file_path, transect_polygon_in_rgb
     points_in_image_df = points_in_image_df.drop_duplicates("geometry").reset_index(
         drop=True
     )
-
-    points_in_image_df["points_in_shade"] = points_in_image_df["geometry"].apply(
-        lambda points_geometry: shade_geometry.distance(points_geometry) < 0.01
-    )
+    points_in_image_df["points_in_shade"] = False
+    for i, row in tree_shade_df.iterrows():
+        shade_geometry = row["geometry"]
+        points_in_image_df["points_in_shade"] = points_in_image_df[
+            "points_in_shade"
+        ] | points_in_image_df["geometry"].apply(
+            lambda points_geometry: shade_geometry.distance(points_geometry) < 0.01
+        )
 
     points_in_image_and_shade_df = points_in_image_df[
         points_in_image_df["points_in_shade"]
     ].reset_index(drop=True)
 
     return points_in_image_and_shade_df
+
+
+def replace_bathymetry_in_too_much_shade(
+    transect_polygon_in_rgb,
+    image_height,
+    image_width,
+    affine_transform,
+    min_proportion_of_not_in_shade_pixels,
+):
+    """
+    Interpolates bathymetry for river sections in shaded areas by combining the HAB technique with trapezoid-based methods.
+
+    This function iterates over each transect polygon in the provided GeoDataFrame and uses the HAB depth estimate for the visible
+    sections of the river. For the shaded sections, it incorporates additional depth points derived from the trapezoid estimation method.
+    An interpolation is performed between the HAB data and the trapezoid-derived points to fill in the bathymetry for the river
+    areas that are in shadow.
+
+    After performing the interpolation for each transect, the function merges the individual depth estimates and their
+    corresponding transformations into a single raster representing the entire river section.
+
+    Parameters:
+    -----------
+    transect_polygon_in_rgb : pandas.DataFrame
+        A DataFrame containing transect polygons with the following columns:
+        - "PK": The identifier for the transect.
+        - "geometry": The geometry of the transect polygon.
+
+    depth_estimate : numpy.ndarray
+        The initial HAB-based depth estimate for the entire river section.
+
+    shade_mask : numpy.ndarray
+        A binary mask indicating the shaded areas of the river.
+
+    affine_transform : affine.Affine
+        The affine transformation to convert pixel coordinates to geographic coordinates.
+
+    image_height : int
+        The height of the image in pixels.
+
+    image_width : int
+        The width of the image in pixels.
+
+    points_in_image_and_shade_df : geopandas.GeoDataFrame
+        A GeoDataFrame containing points from the trapezoid estimation method that lie within the image and are in shaded areas.
+
+    raster_resolution : float
+        The resolution of the raster grid to be used for the interpolation.
+
+    trapezoid_array : numpy.ndarray
+        The depth estimation by the trapezoid method
+
+    min_proportion_of_not_in_shade_pixels: float
+        min proportion of not in shade_pixels. If lower, it used the trapezoid.
+
+    Returns:
+    --------
+    merged_array : numpy.ndarray
+        A 2D array representing the merged interpolated depth estimate for the entire river section.
+
+    merged_transform : affine.Affine
+        The affine transformation corresponding to the merged raster.
+
+
+    """
+    good_pixel_prop = transect_polygon_in_rgb["nb_pixels_no_shade"] / (
+        transect_polygon_in_rgb["nb_pixels_no_shade"]
+        + transect_polygon_in_rgb["nb_pixels_shade"]
+    )
+    transect_in_to_much_shade_geometry = transect_polygon_in_rgb[
+        good_pixel_prop < min_proportion_of_not_in_shade_pixels
+    ]["geometry"]
+    if len(transect_in_to_much_shade_geometry) > 0:
+        all_transect_in_too_much_shade_mask = geometry_mask(
+            transect_in_to_much_shade_geometry.values,
+            out_shape=(image_height, image_width),
+            transform=affine_transform,
+            invert=True,
+        )
+    else:
+        all_transect_in_too_much_shade_mask = numpy.zeros(
+            (image_height, image_width)
+        ).astype(bool)
+    return all_transect_in_too_much_shade_mask

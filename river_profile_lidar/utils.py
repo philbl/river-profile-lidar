@@ -7,8 +7,10 @@ from shapely.ops import unary_union
 import rasterio
 from rasterio.windows import Window
 from rasterio.io import MemoryFile, DatasetReader
+from rasterstats import zonal_stats
 from skimage.util import img_as_float64
 from typing import Tuple, Dict
+from tqdm import tqdm
 
 
 def find_bounding_box(image: numpy.ndarray) -> Tuple[int, int, int, int]:
@@ -39,6 +41,8 @@ def find_bounding_box(image: numpy.ndarray) -> Tuple[int, int, int, int]:
     """
     # Collapse the bands by checking for non-zero pixels across all bands
     non_zero_pixels = numpy.any(image[:3] != 0, axis=0)
+    non_nan_pixels = ~numpy.any(numpy.isnan(image[:3]), axis=0)
+    non_zero_pixels = non_zero_pixels * non_nan_pixels
 
     # Find rows and columns with any non-zero pixels
     non_zero_rows = numpy.any(non_zero_pixels, axis=1)
@@ -138,11 +142,30 @@ def get_water_rgb_array_from_transect_df(
         ]
     )
     rgb_array = rgb.read()
-    rgb_array = rgb_array[:3, :, :].transpose(1, 2, 0)
+    rgb_array = rgb_array.transpose(1, 2, 0)
     is_in_rgb_list = []
-    for _, row in transect_polygon_df.iterrows():
+    for _, row in tqdm(
+        transect_polygon_df.iterrows(),
+        total=len(transect_polygon_df),
+        desc="transect in RGB",
+    ):
         specific_transect_polygon = row["geometry"]
         is_in_rgb = specific_transect_polygon.within(rgb_polygon)
+        if is_in_rgb is True:
+            transect_stats_list = []
+            for band in range(0, 4):
+                transect_stats = zonal_stats(
+                    row["geometry"],
+                    rgb_array[:, :, band],
+                    affine=rgb.transform,
+                    nodata=None,
+                    stats=["min", "max"],
+                )[0]
+                transect_stats_list.append(transect_stats)
+            all_band_min = numpy.array([stats["min"] for stats in transect_stats_list])
+            all_band_max = numpy.array([stats["max"] for stats in transect_stats_list])
+            if (all_band_min == 0).all() or (all_band_max == 255).all():
+                is_in_rgb = False
         is_in_rgb_list.append(is_in_rgb)
     transect_polygon_df["is_in_rgb"] = is_in_rgb_list
 
