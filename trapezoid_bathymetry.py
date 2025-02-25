@@ -1,22 +1,60 @@
+import geopandas
+from pathlib import Path
+import hydra
+from omegaconf import DictConfig
+import logging
+
 from river_profile_lidar.bathymetry.trapezoid.create_trapezoid import (
     process_and_save_trapezoid_bathymetry,
 )
+from river_profile_lidar.river_name_mapping import get_river_save_name_from_index
 
+log = logging.getLogger(__name__)
 
-RGB_IMAGE_PATH = "../data/img/Q12007_479_4bandes_ortho.tif"
-TRANSECT_PATH = (
-    "../data/transects/Transects_Level_2_ESC/Transects_Level_2_ESC_q_split.shp"
-)
-CROSS_SECTIONS_POINTS_PATH = "../data/cross_section/cross_section_points.shp"
 RASTER_RESOLUTION = 0.3
-OUTPUT_PATH = "../data/bathymetry/trapezoid/trapezoid.tif"
+
+
+@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+def run(cfg: DictConfig):
+    log.info(f"Doing Trapezoid for: {cfg.river.name}")
+    river_name = cfg.river.general_river_name
+    rgb_image_folder_path = cfg.river.rgb_image_folder_path
+    transect_path = cfg.river.transect_path
+    index_file_path = cfg.river.index_file_path
+    cross_sections_points_path = Path(
+        cfg.river.cross_section_output_path, "trapezoid_cross_section_points.shp"
+    )
+    saving_folder_path = cfg.river.trapezoid_output_path
+
+    image_to_process_df = geopandas.read_file(index_file_path)
+    hierarchie_col_name = (
+        "Hierarchie" if "Hierarchie" in image_to_process_df.columns else "HIERARCHIE"
+    )
+    image_to_process_df = image_to_process_df.sort_values(
+        by=hierarchie_col_name
+    ).reset_index(drop=True)
+    get_river_save_name_from_index_river = get_river_save_name_from_index(river_name)
+    image_to_process_df["nom_image_save"] = image_to_process_df["NOM_IMAGE"].apply(
+        get_river_save_name_from_index_river
+    )
+    image_name_to_process_list = image_to_process_df["nom_image_save"].to_list()
+    number_image_to_process = len(image_name_to_process_list)
+    for i, image_name in enumerate(image_name_to_process_list):
+        log.info(f"image: {image_name} {i}/{number_image_to_process}")
+        if Path(rgb_image_folder_path, image_name).exists() is False:
+            continue
+        if Path(saving_folder_path, f"{Path(image_name).stem}_trapezoid.tif").exists():
+            continue
+        rgb_image_path = Path(rgb_image_folder_path, image_name)
+        process_and_save_trapezoid_bathymetry(
+            rgb_image_path=rgb_image_path,
+            transect_path=transect_path,
+            cross_sections_points_path=cross_sections_points_path,
+            raster_resolution=RASTER_RESOLUTION,
+            output_path=saving_folder_path,
+        )
+        log.info(f"image: {image_name} Is Done")
 
 
 if __name__ == "__main__":
-    process_and_save_trapezoid_bathymetry(
-        rgb_image_path=RGB_IMAGE_PATH,
-        transect_path=TRANSECT_PATH,
-        cross_sections_points_path=CROSS_SECTIONS_POINTS_PATH,
-        raster_resolution=RASTER_RESOLUTION,
-        output_path=OUTPUT_PATH,
-    )
+    run()

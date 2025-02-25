@@ -1,0 +1,14 @@
+name: ste-marguerite-ne
+general_river_name: SMRNE
+
+rgb_image_folder_path: "D:/SERIF/SMRNE/photos_crop/"
+transect_path: "D:/SERIF/SMRNE/Transect_mathias_nov_2024/Transects_Level_2_SMRNE.shp"
+shade_mask_path: "D:/SERIF/SMRNE/mask_hab_mathias_nov_2024/Mask_ombres_reflets_SMRNE.shp"
+index_file_path: "D:/SERIF/SMRNE/PHOTOS/Index/Index_ortho_utilisee_SMRNE.shp"
+
+cross_section_output_path: "D:/SERIF/SMRNE/HAB_2024/cross_section_points/"
+trapezoid_output_path: "D:/SERIF/SMRNE/HAB_2024/trapezoid/"
+hab_output_path: "D:/SERIF/SMRNE/HAB_2024/hab"
+water_speed_output_path: "D:/SERIF/SMRNE/HAB_2024/vitesse/"
+d84_output_path: "D:/SERIF/SMRNE/HAB_2024/d84/"
+iqh_output_path: "D:/SERIF/SMRNE/HAB_2024/iqh/"

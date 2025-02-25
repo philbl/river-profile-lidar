@@ -15,7 +15,7 @@ from river_profile_lidar.bathymetry.trapezoid.cross_section_points.utils import 
 )
 
 
-def create_cross_section_points(data, folder_save_path):
+def create_cross_section_points(data, folder_save_path, include_middle_point):
     """
     Create cross sections points from transect's polygon.
     Find intersects with touching polygon. Then interpolate points between shore and bottom.
@@ -34,7 +34,7 @@ def create_cross_section_points(data, folder_save_path):
         qi = data.loc[i]["Q_IMG_spli"]
         si = data.loc[i]["Slope"]
         wi = data.loc[i]["WAT_WIDTH"]
-        if si == 0 or pandas.isna(qi) or pandas.isna(si):
+        if si <= 0 or pandas.isna(qi) or pandas.isna(si):
             continue
 
         polygon_before = retrieve_polygon_for_pk(data, pk - 5)
@@ -64,7 +64,7 @@ def create_cross_section_points(data, folder_save_path):
         ]
         # From the the points on the shore. Create points along the line
         uptstream_middle_points_list = create_all_points_from_shore_points_list(
-            intersect_points_after_point_class, qi, si, wi
+            intersect_points_after_point_class, qi, si, wi, include_middle_point
         )
         points_list.extend(uptstream_middle_points_list)
         pk_list.extend([pk] * len(uptstream_middle_points_list))
@@ -92,7 +92,7 @@ def create_cross_section_points(data, folder_save_path):
             continue
 
         all_middle_points_list = create_all_points_from_shore_points_list(
-            adjusted_point_list, qi, si, wi
+            adjusted_point_list, qi, si, wi, include_middle_point
         )
         points_list.extend(all_middle_points_list)
         pk_list.extend([pk] * len(all_middle_points_list))
@@ -109,5 +109,9 @@ def create_cross_section_points(data, folder_save_path):
             "z": int_z_list,
         }
     )
+    if include_middle_point is True:
+        prefix = "trapezoid"
+    else:
+        prefix = "hab"
     geo_df = geopandas.GeoDataFrame(df, geometry=int_z_points_list, crs=f"EPSG:{epsg}")
-    geo_df.to_file(Path(folder_save_path, "cross_section_points.shp"))
+    geo_df.to_file(Path(folder_save_path, f"{prefix}_cross_section_points.shp"))

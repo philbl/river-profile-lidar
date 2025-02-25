@@ -1,6 +1,6 @@
 import geopandas
 from rasterio.features import geometry_mask
-import rasterio
+from pathlib import Path
 import numpy
 
 
@@ -12,6 +12,10 @@ from river_profile_lidar.bathymetry.trapezoid.utils import (
     combine_list_of_array_and_transform_in_one_raster,
     process_transects_to_create_z_grids,
     fix_nan_pixels_with_gaussian_convolution,
+)
+from river_profile_lidar.bathymetry.hab.utils import (
+    get_basic_out_meta_data_tiff,
+    save_array_as_raster,
 )
 
 
@@ -48,22 +52,29 @@ def process_and_save_trapezoid_bathymetry(
     None
         The function saves the final processed raster to the specified output path.
     """
+    image_name_prefix = Path(rgb_image_path).stem
     # Step 1: Crop image to remove black padding
     cropped_image, _ = get_cropped_image_to_remove_black_padding(rgb_image_path)
 
     # Step 2: Load transect polygons and points data
     transect_polygon_df = geopandas.read_file(transect_path)
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Backwater"] == 0]
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Lac"] == 0]
+    transect_polygon_df = transect_polygon_df[~transect_polygon_df["Slope"].isna()]
+    transect_polygon_df = transect_polygon_df[transect_polygon_df["Slope"] > 0]
+    transect_polygon_df = transect_polygon_df.sort_values(by="PK").reset_index(
+        drop=True
+    )
     points = geopandas.read_file(cross_sections_points_path)
 
     # Step 3: Extract transect polygon than are in the image
     _, _, transect_polygon_in_rgb, _ = get_water_rgb_array_from_transect_df(
         cropped_image, transect_polygon_df
     )
-
-    # Filter out transects that are Backwater
-    transect_polygon_in_rgb = transect_polygon_in_rgb[
-        transect_polygon_in_rgb["Backwater"] == 0
-    ].reset_index(drop=True)
+    if transect_polygon_in_rgb is None:
+        return None
+    if len(transect_polygon_in_rgb) == 0:
+        return None
 
     # Step 4: Create Z-value grids for transects
     z_array_list, transform_list = process_transects_to_create_z_grids(
@@ -89,15 +100,13 @@ def process_and_save_trapezoid_bathymetry(
     )
 
     # Step 8: Define metadata and save the final raster
-    out_meta = {
-        "driver": "GTiff",
-        "height": merged_array.shape[0],
-        "width": merged_array.shape[1],
-        "count": 1,
-        "dtype": merged_array.dtype,
-        "crs": points.crs,
-        "transform": merged_transform,
-        "nodata": numpy.nan,
-    }
-    with rasterio.open(output_path, "w", **out_meta) as dest:
-        dest.write(merged_array_nan_fixed, 1)
+    out_meta = get_basic_out_meta_data_tiff()
+    merged_array_nan_fixed = numpy.atleast_3d(merged_array_nan_fixed).transpose(2, 0, 1)
+    out_meta = get_basic_out_meta_data_tiff()
+    save_array_as_raster(
+        merged_array_nan_fixed,
+        out_meta,
+        points.crs,
+        merged_transform,
+        Path(output_path, f"{image_name_prefix}_trapezoid.tif"),
+    )

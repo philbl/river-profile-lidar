@@ -1,0 +1,14 @@
+name: matane
+general_river_name: MAN
+
+rgb_image_folder_path: "D:/SERIF/MAN/photos_crop_matane/"
+transect_path: "D:/SERIF/MAN/Transect_mathias_nov_2024/Transects_Level_2_MAN.shp"
+shade_mask_path: "D:/SERIF/MAN/mask_hab_mathias_nov_2024/mask_ombres_reflets_MAN.shp"
+index_file_path: "D:/SERIF/MAN/PHOTOS/Index/Index_ortho_utilisees.shp"
+
+cross_section_output_path: "D:/SERIF/MAN/HAB_2024/MAN/cross_section_points/"
+trapezoid_output_path: "D:/SERIF/MAN/HAB_2024/MAN/trapezoid/"
+hab_output_path: "D:/SERIF/MAN/HAB_2024/MAN/hab/"
+water_speed_output_path: "D:/SERIF/MAN/HAB_2024/MAN/vitesse/"
+d84_output_path: "D:/SERIF/MAN/HAB_2024/MAN/d84/"
+iqh_output_path: "D:/SERIF/MAN/HAB_2024/MAN/iqh/"
