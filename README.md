@@ -19,6 +19,7 @@ pre-commit install
 ```
 3. Run the code
 
+Create a river config in the config/river folder. There's is an exemple for Dartmouth.
 Make sure that the folder specifiy in the config files exists
 ```
 python -m cross_section_points river=dartmouth
