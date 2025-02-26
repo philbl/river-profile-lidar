@@ -21,13 +21,14 @@ pre-commit install
 
 Make sure that the folder specifiy in the config files exists
 ```
-python -m cross_section_points river=dartmouth
-python -m trapezoid_bathymetry river=dartmouth
-python -m hab river=dartmouth
-python -m water_speed river=dartmouth
-python -m d84 river=dartmouth
-python -m iqhp_surfacique river=dartmouth
-python -m iqhp_linear river=dartmouth
-python -m iqhp_transects river=dartmouth
-python -m uphp_table river=dartmouth
+python -m river_profile_lidar.crop_image river=dartmouth
+python -m river_profile_lidar.cross_section_points river=dartmouth
+python -m river_profile_lidar.trapezoid_bathymetry river=dartmouth
+python -m river_profile_lidar.hab river=dartmouth
+python -m river_profile_lidar.water_speed river=dartmouth
+python -m river_profile_lidar.d84 river=dartmouth
+python -m river_profile_lidar.iqhp_surfacique river=dartmouth
+python -m river_profile_lidar.iqhp_linear river=dartmouth
+python -m river_profile_lidar.iqhp_transects river=dartmouth
+python -m river_profile_lidar.uphp_table river=dartmouth
 ```

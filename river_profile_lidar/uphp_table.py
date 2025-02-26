@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 log = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
     log.info(f"Doing UPHP Transects for: {cfg.river.name}")
     transects_iqhp_path = cfg.river.transect_iqh_output_path

@@ -4,27 +4,35 @@ import hydra
 from omegaconf import DictConfig
 import logging
 
-from river_profile_lidar.bathymetry.trapezoid.create_trapezoid import (
-    process_and_save_trapezoid_bathymetry,
+from river_profile_lidar.bathymetry.hab.create_hab_shade import (
+    process_and_save_hab,
 )
 from river_profile_lidar.river_name_mapping import get_river_save_name_from_index
 
 log = logging.getLogger(__name__)
 
+APPLY_SOBEL = True
 RASTER_RESOLUTION = 0.3
+MIN_PROPORTION_OF_NOT_IN_SHADE_PIXELS = 0.4
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
-    log.info(f"Doing Trapezoid for: {cfg.river.name}")
+    log.info(f"Doing HAB for: {cfg.river.name}")
     river_name = cfg.river.general_river_name
     rgb_image_folder_path = cfg.river.rgb_image_folder_path
     transect_path = cfg.river.transect_path
     index_file_path = cfg.river.index_file_path
-    cross_sections_points_path = Path(
-        cfg.river.cross_section_output_path, "trapezoid_cross_section_points.shp"
-    )
-    saving_folder_path = cfg.river.trapezoid_output_path
+    trapezoid_folder_path = cfg.river.trapezoid_output_path
+    saving_folder_path = cfg.river.hab_output_path
+
+    shade_kwargs = {
+        "shade_mask_path": cfg.river.shade_mask_path,
+        "cross_section_points_path": Path(
+            cfg.river.cross_section_output_path, "hab_cross_section_points.shp"
+        ),
+        "min_proportion_of_not_in_shade_pixels": MIN_PROPORTION_OF_NOT_IN_SHADE_PIXELS,
+    }
 
     image_to_process_df = geopandas.read_file(index_file_path)
     hierarchie_col_name = (
@@ -41,15 +49,19 @@ def run(cfg: DictConfig):
     number_image_to_process = len(image_name_to_process_list)
     for i, image_name in enumerate(image_name_to_process_list):
         log.info(f"image: {image_name} {i}/{number_image_to_process}")
+        if Path(saving_folder_path, f"{Path(image_name).stem}_hab.tif").exists():
+            continue
         if Path(rgb_image_folder_path, image_name).exists() is False:
             continue
-        if Path(saving_folder_path, f"{Path(image_name).stem}_trapezoid.tif").exists():
-            continue
         rgb_image_path = Path(rgb_image_folder_path, image_name)
-        process_and_save_trapezoid_bathymetry(
+        shade_kwargs["trapezoid_path"] = Path(
+            trapezoid_folder_path, f"{Path(image_name).stem}_trapezoid.tif"
+        )
+        process_and_save_hab(
             rgb_image_path=rgb_image_path,
             transect_path=transect_path,
-            cross_sections_points_path=cross_sections_points_path,
+            apply_sobel=APPLY_SOBEL,
+            shade_kwargs=shade_kwargs,
             raster_resolution=RASTER_RESOLUTION,
             output_path=saving_folder_path,
         )

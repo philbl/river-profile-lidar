@@ -10,7 +10,7 @@ from river_profile_lidar.bathymetry.trapezoid.cross_section_points.create_cross_
 log = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
     log.info(f"Doing Cross Section Points for: {cfg.river.name}")
     transect_path = cfg.river.transect_path

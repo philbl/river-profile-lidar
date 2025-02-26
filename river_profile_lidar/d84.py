@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 RASTER_RESOLUTION = 0.3
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
     log.info(f"Doing D84 for: {cfg.river.name}")
     river_name = cfg.river.general_river_name

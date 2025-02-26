@@ -15,7 +15,7 @@ from habitat_model import HabitatModel  # noqa: F401
 log = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
     log.info(f"Doing IQH Transects for: {cfg.river.name}")
     iqh_image_folder_path = cfg.river.iqh_output_path

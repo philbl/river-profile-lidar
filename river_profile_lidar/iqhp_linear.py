@@ -11,7 +11,7 @@ from habitat_model import HabitatModel  # noqa: F401
 log = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config.yaml")
+@hydra.main(version_base=None, config_path="../config", config_name="config.yaml")
 def run(cfg: DictConfig):
     log.info(f"Doing IQH for: {cfg.river.name}")
     transect_path = cfg.river.linear_transect_path
