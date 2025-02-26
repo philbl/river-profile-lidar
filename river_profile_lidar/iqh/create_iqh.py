@@ -26,12 +26,12 @@ def process_and_save_iqh(
     d84_array = d84.read(1)
 
     with open("habitat_model.pkl", "rb") as f:
-        habital_model = pickle.load(f)
+        habitat_model = pickle.load(f)
 
     # Step 2: Calculate IQH
     water_mask = ~numpy.isnan(hab_array)
-    iqh_1d = habital_model.get_hist_1d_estimation_from_value(d84_array)
-    iqh_2d = habital_model.get_hist_2d_estimation_from_value(
+    iqh_1d = habitat_model.get_hist_1d_estimation_from_value(d84_array)
+    iqh_2d = habitat_model.get_hist_2d_estimation_from_value(
         hab_array, water_speed_array
     )
     iqh = iqh_1d * iqh_2d

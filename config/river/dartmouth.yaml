@@ -1,20 +1,20 @@
 name: dartmouth
 general_river_name: DMT
 
-rgb_image_folder_path: "D:/SERIF/DMT/photos_crop_v2/"
-transect_path: "D:/SERIF/DMT/Transect_mathias_nov_2024/Transects_Level_2_DMT.shp"
-shade_mask_path: "D:/SERIF/DMT/mask_hab_mathias_nov_2024/MASK_HAB_DMT.shp"
-index_file_path: "D:/SERIF/DMT/PHOTOS/Index/Index_ortho_utilisees_DMT.shp"
+rgb_image_folder_path: "E:/SERIF/DMT/photos_crop_v2/"
+transect_path: "E:/SERIF/DMT/Transect_mathias_nov_2024/valid_pk/Transects_Level_2_DMT_d84.shp"
+shade_mask_path: "E:/SERIF/DMT/mask_hab_mathias_nov_2024/MASK_HAB_DMT.shp"
+index_file_path: "E:/SERIF/DMT/PHOTOS/Index/Index_ortho_utilisees_DMT.shp"
 
-cross_section_output_path: "D:/SERIF/DMT/HAB_2024/cross_section_points/"
-trapezoid_output_path: "D:/SERIF/DMT/HAB_2024/trapezoid/"
-hab_output_path: "D:/SERIF/DMT/HAB_2024/hab"
-water_speed_output_path: "D:/SERIF/DMT/HAB_2024/vitesse/"
-d84_output_path: "D:/SERIF/DMT/HAB_2024/d84/"
-iqh_output_path: "D:/SERIF/DMT/HAB_2024/iqh/"
+cross_section_output_path: "E:/SERIF/DMT/HAB_2024_test/cross_section_points/"
+trapezoid_output_path: "E:/SERIF/DMT/HAB_2024_test/trapezoid/"
+hab_output_path: "E:/SERIF/DMT/HAB_2024_test/hab"
+water_speed_output_path: "E:/SERIF/DMT/HAB_2024_test/vitesse/"
+d84_output_path: "E:/SERIF/DMT/HAB_2024_test/d84/"
+iqh_output_path: "E:/SERIF/DMT/HAB_2024_test/iqh/"
 
-linear_transect_path: "D:/SERIF/DMT/Linear/Linear/Transects_Tr_N2_DMT.shp"
-linear_iqh_output_path: "D:/SERIF/DMT/HAB_2024/iqh_linear/Transects_Tr_N2_DMT.shp"
+linear_transect_path: "E:/SERIF/DMT/Linear/Linear/Transects_Tr_N2_DMT.shp"
+linear_iqh_output_path: "E:/SERIF/DMT/HAB_2024_test/iqh_linear/Transects_Tr_N2_DMT.shp"
 
-mffp_linear_transect_path: "D:/SERIF/DMT/Linear/Linear/Transects_Tr_N2_DMT.shp"
-mffp_linear_iqh_output_path: "D:/SERIF/DMT/HAB_2024/iqh_linear/Transects_Tr_N2_DMT.shp"
+transect_iqh_output_path: "E:/SERIF/DMT/HAB_2024_test/iqh_transects/Transects_Level_2_DMT.shp"
+uphp_table_path: "E:/SERIF/DMT/HAB_2024_test/uphp.csv"
