@@ -239,8 +239,6 @@ def process_and_save_hab(
             affine_transform,
             points_in_image_and_shade_df,
             raster_resolution,
-            trapezoid_array,
-            shade_kwargs["min_proportion_of_not_in_shade_pixels"],
         )
         if depth_estimate_shade is not None:
             depth_estimate_shade = reproject_raster(
